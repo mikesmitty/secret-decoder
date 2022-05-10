@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"encoding/base64"
 	"fmt"
 	"io/ioutil"
@@ -39,10 +40,13 @@ func main() {
 	delete(secret, "data")
 	secret["stringData"] = stringData
 
-	output, err := yaml.Marshal(&secret)
+	var buf bytes.Buffer
+	yamlEncoder := yaml.NewEncoder(&buf)
+	yamlEncoder.SetIndent(2)
+	err = yamlEncoder.Encode(&secret)
 	if err != nil {
 		log.Fatal("error: %w", err)
 	}
 
-	fmt.Print(string(output))
+	fmt.Print(buf.String())
 }
