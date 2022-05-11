@@ -25,18 +25,21 @@ func main() {
 		log.Fatal("error: %w", err)
 	}
 
-	data := make(map[string]string)
+	var data map[string]string
 	dataNode := fields["data"]
 	err = dataNode.Decode(&data)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	stringData := make(map[string]string)
+	var stringData map[string]string
 	stringDataNode := fields["stringData"]
 	err = stringDataNode.Decode(&stringData)
 	if err != nil {
 		log.Fatal(err)
+	}
+	if stringData == nil {
+		stringData = make(map[string]string)
 	}
 
 	for k, v := range data {
