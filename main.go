@@ -4,48 +4,67 @@ import (
 	"bytes"
 	"encoding/base64"
 	"fmt"
-	"io/ioutil"
 	"log"
 	"os"
-	"reflect"
 
 	"gopkg.in/yaml.v3"
 )
 
 func main() {
-	secret := make(map[string]interface{})
+	var root yaml.Node
+	fields := make(map[string]yaml.Node)
 
-	stdin, err := ioutil.ReadAll(os.Stdin)
+	yamlDecoder := yaml.NewDecoder(os.Stdin)
+	err := yamlDecoder.Decode(&root)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	err = root.Decode(&fields)
 	if err != nil {
 		log.Fatal("error: %w", err)
 	}
 
-	err = yaml.Unmarshal(stdin, &secret)
+	data := make(map[string]string)
+	dataNode := fields["data"]
+	err = dataNode.Decode(&data)
 	if err != nil {
-		log.Fatal("error: %w", err)
+		log.Fatal(err)
 	}
 
 	stringData := make(map[string]string)
-	iter := reflect.ValueOf(secret["data"]).MapRange()
-	for iter.Next() {
-		key := iter.Key().Interface().(string)
-		value := iter.Value().Interface().(string)
-		item, err := base64.StdEncoding.DecodeString(string(value))
-		if err != nil {
-			log.Fatal("error: %w", err)
-		}
-		stringData[key] = string(item)
+	stringDataNode := fields["stringData"]
+	err = stringDataNode.Decode(&stringData)
+	if err != nil {
+		log.Fatal(err)
 	}
 
-	delete(secret, "data")
-	secret["stringData"] = stringData
+	for k, v := range data {
+		val, err := base64.StdEncoding.DecodeString(v)
+		if err != nil {
+			log.Fatal(err)
+		}
+		stringData[k] = string(val)
+	}
+
+	err = stringDataNode.Encode(&stringData)
+	if err != nil {
+		log.Fatal(err)
+	}
+	fields["stringData"] = stringDataNode
+	delete(fields, "data")
+
+	err = root.Encode(&fields)
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	var buf bytes.Buffer
 	yamlEncoder := yaml.NewEncoder(&buf)
 	yamlEncoder.SetIndent(2)
-	err = yamlEncoder.Encode(&secret)
+	err = yamlEncoder.Encode(&root)
 	if err != nil {
-		log.Fatal("error: %w", err)
+		log.Fatal(err)
 	}
 
 	fmt.Print(buf.String())
